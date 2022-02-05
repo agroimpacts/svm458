@@ -1,0 +1,46 @@
+---
+title: "Overview of GEOG346coursework package"
+author: "Sai Vishal Muda"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{documentation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+`GEOG346coursework` is a package which includes all the course work related to GEOG346 - Geospatial analysis with R.
+
+Functions available in the package:
+
+`my_number_checker`
+
+This function checks if the number is too low, just right or too high.
+
+```{r}
+
+library(GEOG346coursework)
+
+my_number_checker(4)
+my_number_checker(9)
+my_number_checker(458)
+```
+
+`squirrel_function`
+
+This function allows (defaults to true) you to express your admiration for squirrels 
+
+```{r}
+
+library(GEOG346coursework)
+
+squirrel_function()
+```
+
+More functions coming soon!
