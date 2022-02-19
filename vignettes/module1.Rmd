@@ -1,5 +1,5 @@
 ---
-title: "Overview of GEOG346coursework package"
+title: "Overview of svm346 package"
 author: "Sai Vishal Muda"
 output: rmarkdown::html_vignette
 vignette: >
@@ -15,7 +15,11 @@ knitr::opts_chunk$set(
 )
 ```
 
-`GEOG346coursework` is a package which includes all the course work related to GEOG346 - Geospatial analysis with R.
+`svm346` is a package which includes all the course work related to GEOG346 - Geospatial analysis with R.
+
+```{r}
+library(svm346)
+```
 
 Functions available in the package:
 
@@ -23,10 +27,9 @@ Functions available in the package:
 
 This function checks if the number is too low, just right or too high.
 
+
+
 ```{r}
-
-library(GEOG346coursework)
-
 my_number_checker(4)
 my_number_checker(9)
 my_number_checker(458)
@@ -38,9 +41,17 @@ This function allows (defaults to true) you to express your admiration for squir
 
 ```{r}
 
-library(GEOG346coursework)
 
 squirrel_function()
 ```
 
-More functions coming soon!
+`my_calc`
+
+This function works as a calculator supporting basic operations like add, subtract, multiply
+and divide on R data types.
+
+```{r}
+
+my_calc(2, 4, "multiply")
+
+```

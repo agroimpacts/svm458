@@ -1,0 +1,278 @@
+---
+title: "module3"
+author: "Vishal"
+date: "2/17/2022"
+output: html_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+This document describes dealing with R data structures and using indexing to access and modify the data.
+
+Loads the package 
+```{r}
+library(svm346)
+```
+
+Sets seed to 1
+```{r}
+set.seed(1)
+```
+
+Create random sample of size 20 between 0-100 
+```{r}
+v1 <- sample(0:100, size = 20, replace = TRUE)
+v1
+```
+Create random sample of size 20 between 0-10 
+
+```{r}
+v2 <- sample(1:10, size = 20, replace = TRUE)
+v2
+```
+Create sample of size 20 uniformly distributed between 0-1
+
+```{r}
+v3 <- runif(n = 20, min = 0, max = 1)
+v3
+```
+Create vector of letters using values from v2 as index
+
+```{r}
+v4 <- vector()
+for(i in 1:length(v2)) {
+  v4[i] = LETTERS[v2[i]]
+}
+v4
+```
+
+Create matrix m1 using vectors v1 and v2
+
+```{r}
+m1 <- cbind(v1, v2)
+m1
+```
+Create matrix m2 using vectors v2 and v3
+
+```{r}
+m2 <- cbind(v2, v3)
+m2
+```
+
+Create matrix m3 using vectore v3 and v4
+```{r}
+m3 <- cbind(v3, v4)
+m3
+```
+
+Create dataframe DF using vectors v1, v2, v3, v4
+```{r}
+DF <- data.frame(v1, v2, v3, v4)
+DF
+```
+
+Question: why shouldn’t you use the name “df” to name this object?
+Answer: Using df might cause unwanted errors because it is predefined in the tree package
+
+Changing column names of the dataframe DF
+```{r}
+names(DF) <- c("a","b", "c", "grp")
+```
+
+Question: why is it okay to rename a column in DF “c”, but not to rename v3 that name?
+Answer: v3 is the vector which stores the values. DF is created using v3. changing the column name will just change the reference in the data frame.
+
+```{r}
+str(DF)
+```
+
+What kind of data type is “grp”? How would you change it between character and factor and back again?
+
+"grp" has a datatype of character. Following code helps convert columns with character to factor data type. and then the factor back to character.
+
+```{r}
+DF <- as.data.frame(unclass(DF), stringsAsFactors = TRUE)
+str(DF)
+
+DF$grp <- as.character(DF$grp)
+str(DF)
+DF
+```
+
+Adding vectors v1 and v2 using my_calc function
+```{r}
+s1 <-  my_calc(v1, v2, "sum")
+s1
+```
+Adding vectors v2 and v3 using my_calc function
+
+```{r}
+s2 <-  my_calc(v2, v3, "sum")
+s2
+```
+
+Adding vectors v1 and v3 using my_calc function
+
+```{r}
+s3 <-  my_calc(v1, v3, "sum")
+s3
+```
+
+Adding matrices m1 and m1 using my_calc function
+
+```{r}
+s4 <-  my_calc(m1, m1, "sum")
+s4
+```
+Adding matrices m1 and m2 using my_calc function
+
+
+```{r}
+s5 <-  my_calc(m1, m2, "sum")
+s5
+```
+Adding matrices m2 and m3 using my_calc function
+
+This will throw an error because m3 has 2nd column as character data and m2 has 2nd column as numeric data. Binary operations cannot be performed with character data
+
+```{r, error= TRUE}
+s6 <-  my_calc(m2, m3, "sum")
+```
+
+Dividing vectors v1 and v2 using my_calc function
+
+```{r}
+d1 <-  my_calc(v1, v2, "divide")
+d1
+```
+
+Dividing vectors v2 and v3 using my_calc function
+
+```{r}
+d2 <-  my_calc(v2, v3, "divide")
+d2
+```
+
+Dividing vectors v1 and v3 using my_calc function
+
+```{r}
+d3 <-  my_calc(v1, v3, "divide")
+d3
+```
+
+Dividing matrices m1 and m1 using my_calc function
+
+```{r}
+d4 <-  my_calc(m1, m1, "divide")
+d4
+```
+
+Dividing vectors m1 and m2 using my_calc function
+
+```{r}
+d5 <-  my_calc(m1, m2, "divide")
+d5
+```
+
+Dividing vectors m2 and m3 using my_calc function
+This will throw an error because m3 has 2nd column as character data and m2 has 2nd column as numeric data. Binary operations cannot be performed with character data
+
+
+```{r, error=TRUE}
+d6 <-  my_calc(m2, m3, "divide")
+```
+Multiplying row1, column1 by row1, column2 using my_calc function
+
+```{r}
+
+df_m1 <- my_calc(DF[[1]][[1]], DF[[2]][[1]], "multiply")
+df_m1
+```
+Multiplying rows 1-10, column 1-3 by rows1-10, columns 1-3
+
+```{r}
+df1 <- DF[1:10,1:3]
+df1
+df_m2 <- my_calc(df1, df1, "multiply")
+df_m2
+
+```
+Filtering rows from DF whose grp column value is "E"
+
+```{r}
+filtered_df <- DF[DF$grp == "E", c("a", "b", "c")]
+filtered_df
+
+```
+
+Dividing columns a,b by column c of filtered_df using my_calc function
+
+```{r}
+df3 <- my_calc(filtered_df[c("a")], filtered_df[c("c")], fun = "divide")
+df3
+
+
+df4 <- my_calc(filtered_df[c("b")], filtered_df[c("c")], fun = "divide")
+df4
+```
+
+Dividing columns a,b by column c of filtered_df 
+
+```{r}
+df4 <- filtered_df$a/filtered_df$c
+df4
+
+df5 <- filtered_df$b/filtered_df$c
+df5
+```
+
+Create list l1 using v1, m1 and m2
+```{r}
+l1 <- list(v1, m1, m2)
+l1
+
+```
+
+Iterates list1 and applies sum function on each item in the list
+
+```{r}
+l2 <- lapply(l1, sum)
+l2
+```
+
+Iterates over list1 and multiplies each item with v2
+
+```{r}
+l3 <- lapply(l1, function(x) {
+  return(my_calc(x, v2, "multiply"))
+})
+l3
+
+```
+
+Iterates over l1 and multiplies each item with v2
+
+```{r}
+s1 <- sapply(list1, function(x) {
+  return(my_calc(x, v2, "multiply"))
+})
+s1
+
+str(s1)
+```
+
+
+
+
+
+
+
+
+
+
+
