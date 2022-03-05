@@ -1,5 +1,5 @@
 ---
-title: "Overview of svm346 package"
+title: "documentation"
 author: "Sai Vishal Muda"
 output: rmarkdown::html_vignette
 vignette: >

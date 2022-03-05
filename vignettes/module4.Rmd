@@ -1,0 +1,191 @@
+---
+title: "module4"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{abc}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+
+# importing libraries
+
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(tidyr)
+library(geospaar)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+# creating tibbles
+
+set.seed(1)
+t1 <- tibble(v1 = paste0("G", 1:10), v2 = runif(n=10, 75, 125))
+t1
+
+t2 <- tibble(v1 = paste0("G", 1:15), 
+             v3 = sample(LETTERS[1:6], size = 15, replace = TRUE))
+t2
+
+t3 <- tibble(v1 = paste0("G", 1:20), v4 = rnorm(20, mean = 100, sd = 20))
+t3
+
+```
+
+
+
+
+```{r, message=FALSE, warning=FALSE}
+# left join of tibbles
+
+left_join(t1, t2, "v1") %>% left_join(., t3)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+# right join of tibbles
+
+right_join(t1, t2, "v1") %>% right_join(., t3)
+```
+
+```{r, message=FALSE, warning=FALSE}
+# full join of tibbles
+
+full_join(t1, t2, "v1") %>% full_join(., t3)
+```
+
+```{r, message=FALSE, warning=FALSE}
+# inner join of tibbles
+
+inner_join(t1, t2, "v1") %>% inner_join(., t3)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+# finding files with pattern from the folder
+fs <- dir(system.file("extdata", package = "geospaar"), 
+          pattern = "FAOSTAT", full.names = TRUE)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+# read csv files using lapply
+# select specific columns
+# apply pivot wider to create new columns for harvest area and production
+# rename columns 
+# calculate yield and create new column for it
+# changes country values
+# changes crop names to lower cases
+
+crops_df <- do.call(rbind, lapply(fs, function(x) {
+  readr::read_csv(x) %>% 
+    dplyr::select(Item, Area, Element, Year, Value) %>% 
+    pivot_wider(names_from = Element, values_from = Value) %>% 
+    rename(crop = Item, country = Area, year = Year, 
+           harv_area = `Area harvested`, prod = Production) %>% 
+    mutate(yield = prod/harv_area) %>% 
+    mutate(country = ifelse(country == "South Africa", "SA", country)) %>% 
+    mutate(country = ifelse(country == "Zambia", "ZMB", country)) %>% 
+    mutate(crop = tolower(crop))
+}))
+
+crops_df
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+
+# filter rows with maize as crop and SA as country
+# arrange the rows in descending order based on harv_area 
+# slice first five rows 
+crops_df %>% 
+  filter(crop == "maize" && country == "SA") %>% 
+  arrange(desc(harv_area)) %>% 
+  slice(1:5)
+
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+# filter rows with maize as crop and SA as country
+# arrange the rows in descending order based on yield 
+# slice first five rows 
+crops_df %>% 
+  filter(crop == "maize" && country == "SA") %>% 
+  arrange(desc(yield)) %>% 
+  slice(1:5)
+```
+
+```{r}
+# group by crop names and mean yield for each crop
+crops_df %>% 
+  group_by(crop) %>% 
+  summarize(mean = mean(yield))
+```
+
+```{r, message=FALSE, warning=FALSE}
+# use sapply to find mean yield for each crop
+
+crops1 = list("maize", "wheat", "sorghum")
+sapply(crops1, function(x) {
+  mean(crops_df[crops_df$crop == x, ]$yield)
+  })
+```
+
+```{r, message=FALSE, warning=FALSE}
+crops_df %>% 
+  group_by(crop, country) %>% 
+  summarise(cor = cor(harv_area, yield)) %>% 
+  arrange((cor))
+```
+
+
+```{r, message=FALSE, warning=FALSE, fig.width=4.75, fig.height=3.75, fig.align= "center"}
+# plot of harv_area vs yield for SA and Zambia
+crops_df %>%  filter(crop =="maize") %>% 
+  ggplot() + geom_point(aes(x = harv_area, y = yield, color = country)) +
+  geom_smooth(aes(x = harv_area, y = yield, color = country), method = "lm") +
+  scale_color_manual(values = c("blue", "green")) +
+  xlab("Harvested Area (ha)") + ylab("Yield (t/ha)") +
+  ggtitle("Harvested Area versus yield")
+```
+
+```{r, message=FALSE, warning=FALSE, fig.width=4.75, fig.height=3.75, fig.align= "center"}
+# plot of wheat yield in SA over the years
+sa_wheat <- crops_df %>% filter(crop == "wheat" & country == "SA")
+rg <- range(crops_df[crops_df$crop == "wheat", "yield"])
+
+plot(yield ~ year, data = sa_wheat, pch = 16, col = "grey",
+     ylim = rg, main = "South Africa Wheat (1961-2017)", xlab = "", ylab = "Yield (t/ha)")
+abline(lm(yield ~ year, data = sa_wheat), col = "blue")
+points(yield ~ year, data = sa_wheat, pch = 16, col = "grey")
+
+```
+
+```{r, message=FALSE, warning=FALSE, fig.width=4.75, fig.height=3.75, fig.align= "center"}
+# histogram representing number of areas with a certain yield
+crops_df %>% 
+  filter(crop == "maize" & country == "ZMB") %>% 
+  ggplot() +
+  geom_histogram(aes(x = yield, fill = country), bins = 5,
+                 position = "dodge", color = "black") +
+  scale_fill_manual(values = "blue") +
+  xlab("Yield (t/ha)") + 
+  ylab("") +
+  ggtitle("Zambian Maize")
+  
+```
+
+
+
