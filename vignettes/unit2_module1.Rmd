@@ -1,0 +1,173 @@
+---
+title: "unit2_module1"
+author: "Vishal"
+date: "3/24/2022"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# imports library
+library(geospaar)
+devtools::install(build_vignettes = TRUE)
+
+
+# create roads 
+roads <- read_sf(system.file("extdata/roads.shp", package = "geospaar"))
+
+# create farmers
+farmers_alb <- system.file("extdata/farmer_spatial.csv", package = "geospaar") %>% 
+  read_csv() %>% distinct(uuid, x, y, season) %>% st_as_sf(coords = c("x", "y"), crs = 4326) %>% st_transform(crs = st_crs(roads))
+
+# create districts
+districts_alb <- st_read(system.file("extdata/districts.shp", package = "geospaar")) %>% st_transform(st_crs(roads))
+
+# bounding box of data
+sfdat <- list("districts" = districts_alb,  "roads" = roads, "farmers" = farmers_alb)
+sapply(sfdat, function(x) st_bbox(x))
+
+```
+
+```{r, fig.width=6, fig.align="center", fig.height=4}
+
+# sf plot of the data
+
+par(mar = rep(0, 4))
+plot(st_geometry(districts_alb), col = "grey")
+plot(st_geometry(roads), col = "red", add = TRUE)
+plot(st_geometry(farmers_alb), pch = 20, reset = FALSE, col = "blue", add = TRUE)
+
+```
+
+
+```{r, fig.width=5, fig.height=6, fig.align="center"}
+par(mar = rep(0, 4))
+ggplot(districts_alb, fill = "grey") + geom_sf() + theme_bw() +
+  geom_sf(data = roads, col = "red") + 
+  geom_sf(data = farmers_alb, col = "blue")
+```
+
+
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+
+# median area district
+par(mar = c(0,0,1,0))
+median_dist <- districts_alb %>% mutate(area = as.numeric(st_area(.))) %>%  
+                        with(. , which.min(abs(area - median(area)))) %>% 
+                        districts_alb[. , ]
+
+# 
+ggplot(districts_alb) + geom_sf(fill = "grey") + geom_sf(data = median_dist, fill = "khaki") + ggtitle("The Median Area District")
+
+```
+
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+# centroid of median district
+
+median_distp <- st_centroid(median_dist)
+
+closest_20farmers <- farmers_alb %>% st_transform(., st_crs(median_distp)) %>%  filter(season == 1) %>% 
+  mutate(dist = as.numeric(st_distance(.,median_distp))) %>% arrange(dist) %>%            slice(1:20)
+
+
+ggplot(districts_alb) + geom_sf(fill = "grey") + geom_sf(data = median_dist, fill = "khaki") + geom_sf(data = median_distp, color = "purple") + geom_sf(data = farmers_alb, color = "blue") + geom_sf(data = closest_20farmers, color = "red")
+
+```
+
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+
+par(mar = c(0,0,0,0))
+lat = c(30,31)
+lon = c(-10, -11)
+
+poly_df = data.frame(lon, lat)
+
+pol <- st_polygon(list(
+        cbind(
+         poly_df$lat[c(1,1,2,2,1)],
+         poly_df$lon[c(1,2,2,1,1)] 
+        )
+       )
+    ) %>% st_sfc(., crs=4326) %>% st_transform(st_crs(roads)) 
+
+intersects_dis <- unlist(st_intersects(pol, districts_alb)) %>% districts_alb[. , ]
+
+plot(st_geometry(districts_alb), col = "grey")
+plot(st_geometry(intersects_dis), col = "grey40", add = TRUE)
+plot(st_geometry(pol), col = "NA", border = "yellow", add = TRUE)
+
+pol_area <- pol %>% (st_area) %>% units::set_units("ha")
+
+```
+The area of polygon in hectares is
+`r pol_area`
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+
+par(mar = c(0,0,0,0))
+intersection_dis <- st_intersection(pol, districts_alb) %>% st_cast(., "MULTIPOLYGON") %>% data.frame(.) %>% mutate(area_sqkm = as.numeric(st_area(.$geometry))/10^6)
+
+
+ggplot(districts_alb) + geom_sf(color = "grey") + geom_sf(data = intersection_dis$geometry, fill = rainbow(n = nrow(intersection_dis)))
+
+```
+Mean of intersection polygons is 
+ `r mean(intersection_dis$area_sqkm)` 
+and Median of intersection polygons is
+ `r median(intersection_dis$area_sqkm)`
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+
+par(mar = c(0,0,0,0))
+
+roads_extreme <- roads %>% mutate(dist_km = as.numeric(st_length(.))/1000) %>% arrange(dist_km) %>% slice(c(1,n()))
+
+roads_extreme_buffer <- roads_extreme %>% st_buffer(dist =  50000)
+
+ggplot(districts_alb) + geom_sf(fill = "grey") + geom_sf(data = roads_extreme_buffer , fill = "blue") + geom_sf(data = roads_extreme , color = "red" , lwd = 3)
+```
+
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+
+par(mar = c(0,0,0,0))
+set.seed(2)
+ 
+roads_arranged <- roads_extreme_buffer %>%  mutate(area = as.numeric(st_area(.))) %>%arrange(area)
+
+sample_points <- do.call(rbind,lapply(c(10, 50), function(x) {
+  if (x == 10) {
+    buffer <- roads_arranged[1, ]
+  } else if (x == 50){
+    buffer <- roads_arranged[2, ]
+  }
+  st_sample(buffer, size = x, type = "random") %>% as_Spatial(., cast = TRUE, IDs = paste0("ID", seq_along(.)))
+}))
+
+
+ggplot(districts_alb) + geom_sf(fill = "grey") + geom_sf(data = roads_extreme_buffer , fill = "blue") + geom_sf(data = roads_extreme , color = "red" , lwd = 3) +
+  geom_sf(data = st_as_sf(sample_points),  color = "yellow")
+```
+
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+
+par(mar = c(0,0,0,0))
+
+roads_int <- unlist(st_intersects(roads_extreme_buffer[2, ], roads)) %>% roads[.,]
+roads_int <- roads_int %>% mutate(dist = as.numeric(st_length(.))/1000)
+
+ggplot(districts_alb) + geom_sf(fill = "grey") + geom_sf(data = roads_extreme_buffer[2, ], fill = "blue") + geom_sf(data = roads_int, color = "red")
+
+```
+Total distance of intersected roads in km is
+ `r sum(roads_int$dist)`
+
+
