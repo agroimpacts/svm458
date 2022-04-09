@@ -1,6 +1,6 @@
 Package: svm346
 Title: Geospatial analysis with R course related work
-Version: 0.0.3
+Version: 0.0.4
 Author: Sai Vishal Muda
 Maitainer: saivishalmuda@gmail.com
 Description: R package for GEOG346 course work

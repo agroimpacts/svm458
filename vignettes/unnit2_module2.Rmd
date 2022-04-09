@@ -1,0 +1,232 @@
+---
+title: "unit2_module2"
+author: "Vishal"
+date: "4/7/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, warning = FALSE, message = FALSE}
+# imports library
+library(geospaar)
+
+#create farmers
+farmers <- system.file("extdata/farmer_spatial.csv", package = "geospaar") %>% 
+  read_csv()
+# create roads 
+roads <- read_sf(system.file("extdata/roads.shp", package = "geospaar"))
+
+# create districts
+districts <- st_read(system.file("extdata/districts.shp", package = "geospaar")) %>% st_transform(crs = 4326)
+
+# get districts
+districts_ss <- districts[c(22,26, 53,54), ]
+
+# set seed
+set.seed(1)
+
+# change the extent of raster
+r <- raster(extent(districts_ss), res = 0.1, crs = st_crs(districts))
+
+rsamp <- r
+rrandn <- r
+
+# assign random values
+values(rsamp) <- runif(n = ncell(rsamp), 10, 50)
+values(rrandn) <- rnorm(n = ncell(rrandn), mean = 30, sd = 5)
+
+# stack the layers and mask 
+s <- list(rsamp, rrandn) %>% stack %>% mask(districts_ss)
+names(s) <- c("RSamp", "Rrandn")
+
+# plot rasters
+plot_noaxes(s)
+
+```
+```{r, warning = FALSE, message = FALSE}
+
+# dissaggregate raster using bilinear
+s2_1d <- disaggregate(x = s[[1]], fact = 4, method = "bilinear")
+
+s2_1gt35 <- s2_1d > 35
+
+s2_1gt35[s2_1gt35 == 0] <- NA 
+
+# convert raster to polygons
+s2poly <- rasterToPolygons(x = s2_1gt35, dissolve = TRUE) %>% st_as_sf(crs = 4326)
+
+# plot raster
+par(mar = c(0, 0, 0, 0))
+plot(s2_1d)
+s2poly%>% st_geometry %>% plot(pch = 20, col = "red", add = TRUE)
+             
+```
+
+```{r, warning = FALSE, message = FALSE}
+zamr <- raster(extent(districts), res =0.5,  crs = 4326)
+values(zamr) <- 1
+
+farmersr <- farmers %>% distinct(uuid, .keep_all = TRUE) %>% 
+  dplyr::select(x, y) %>% mutate(count = 1) %>% 
+  st_as_sf(coords = c("x", "y"), crs = 4326) %>% 
+  rasterize(x = ., y = zamr, field = "count", fun = sum) %>% mask(districts)
+
+districts %>% st_union() %>% st_geometry %>% plot(col = "grey")
+plot(farmersr , add = TRUE)
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+farmersrpts <- rasterToPoints(x = farmersr, spatial = TRUE) %>% st_as_sf
+zamr2 <- raster(extent(districts), res =0.05,  crs = 4326)
+
+dist_to_farmers <- distanceFromPoints(object = zamr2, xy = as_Spatial(farmersrpts))
+dist_to_farmers <- mask(dist_to_farmers, districts)
+
+dist_to_farmers <- dist_to_farmers/1000
+
+plot(dist_to_farmers)
+farmersrpts %>% st_geometry %>% plot(pch = 20, col = "black", add = TRUE)
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+fs <- dir("C:/Users/svroc/Documents/tmean_2-5m_bil", full.names = TRUE, pattern = "bil")
+tmeans <- stack(lapply(fs, function(x) raster(x))) 
+cropped_tmeans <- crop(tmeans, districts)
+
+annual_mean <- calc(cropped_tmeans, mean)
+
+annual_mean <- mask(annual_mean, districts)
+
+zamt_mean <- annual_mean / 10
+
+plot(zamt_mean)
+
+```
+# Floor returns the integer less than or equal to the value
+# Ceiling returns the integer greater than or equal to the value
+
+```{r, warning = FALSE, message = FALSE}
+
+trng <- cellStats(zamt_mean, range)
+reclmat <- cbind(c(floor(trng[1]), 20, 24), c(20, 24, ceiling(trng[2])), 1:3)
+
+zamtclass <- reclassify(x = zamt_mean, rcl = reclmat, include.lowest = TRUE)
+
+cols <- c("blue", "yellow2", "red")
+plot_noaxes(zamtclass, legend = FALSE, main = "Annual Mean Temperature", col = cols, 
+            mar = c(0, 0, 1, 0))
+legend(x = "bottomright", legend = c("High", "Medium", "Low"), 
+       pch = 15, pt.cex = 3, col = rev(cols), bty = "n")
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+data(zamprec)
+zamprec_extent <- resample(x = zamprec, y = zamtclass, method = "ngb")  # match extent
+
+z <- zonal(x = zamprec_extent, z = zamtclass, fun = "mean")
+
+zamprecz <- z %>% data.frame %>% subs(x = zamtclass , y = ., by = "zone")
+
+cols2 <- c("yellow2", "green3", "blue")
+
+plot_noaxes(zamprecz, legend = FALSE, main = "Mean Precipitation", col = cols2, 
+            mar = c(0, 0, 1, 0))
+
+legend(x = "bottomright", legend = round(z_df$mean), 
+       pch = 15, pt.cex = 3, col = rev(cols2), bty = "n")
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+dem <- getData(name = "alt", country = "ZMB", path = tempdir())
+dem5 <- aggregate(x = dem, fact = 5, fun = mean)
+aspect <- terrain(x = dem5, opt = 'aspect', unit = 'degrees')
+west <- aspect > 247.5 & aspect < 292.5
+east <- aspect > 67.5 & aspect < 112.5
+
+stack1 <- stack(aspect, east, west)
+titles <- c("Aspect", "East", "West")
+par(mfrow = c(1, 3), mar = c(0, 0, 1, 0))
+for(i in 1:3) plot_noaxes(stack1[[i]], main = titles[i])
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+west[west == 0] <- NA 
+east[east == 0] <- NA 
+
+set.seed(1)
+westsamp <- sampleRandom(x = west, size = 100, sp = TRUE) %>% st_as_sf()
+eastsamp <- sampleRandom(x = east, size = 100, sp = TRUE) %>% st_as_sf()
+
+temp_stats <- bind_rows(
+  tibble(temp = raster::extract(zamt_mean, westsamp), dat = "West"), 
+  tibble(temp = raster::extract(zamt_mean, eastsamp), dat = "East")
+)
+
+bp_theme <- theme(legend.title = element_blank(), axis.text.x = element_blank(),
+                  axis.ticks.x = element_blank(), 
+                  panel.grid.major.x = element_blank(), 
+                  panel.grid.minor.x = element_blank(), 
+                  panel.background = element_rect(fill = "grey95"))
+temp_stats %>% ggplot() +
+  geom_boxplot(mapping = aes(y = temp, fill = dat), position = "dodge2") +
+  scale_fill_manual(values = c("steelblue", "cadetblue")) + 
+  ggtitle("Temparature distributions") + xlab(NULL) + ylab("Celcius") + bp_theme
+```
+
+```{r, warning = FALSE, message = FALSE}
+library(gstat)
+
+dcent <- districts %>% st_geometry() %>% st_centroid() %>% st_transform(st_crs(roads))
+
+zamtmeanalb <- projectRaster(zamt_mean, crs = crs(roads), res = 5000, bilinear =  TRUE)
+
+dcent <- dcent %>% st_as_sf %>%  mutate(temp = raster::extract(x = zamtmeanalb, y = . ))
+dcent <- bind_cols(
+  dcent %>% data.frame %>% dplyr::select(-x)  %>% as_tibble, 
+  st_coordinates(dcent) %>% as_tibble) %>% rename(x = X, y = Y)
+
+idw <- gstat(id = "temp", formula = temp ~ 1, locations = ~x + y, 
+                 data = dcent)
+zamtidw <- interpolate(object = zamtmeanalb, model = idw) %>%  mask(x = . , mask = zamtmeanalb)
+stack2 <- stack(zamtmeanalb, zamtidw)
+titles <- c("Real Temperature", "IDW Temperature")
+par(mfrow = c(1, 2), mar = c(0, 0, 1, 0))
+for(i in 1:2) plot_noaxes(stack2[[i]], main = titles[i])
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
