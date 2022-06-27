@@ -2,4 +2,13 @@
 
 export(my_calc)
 export(my_number_checker)
+export(polygonize_labels)
 export(squirrel_function)
+importFrom(dplyr,"%>%")
+importFrom(sf,sf_use_s2)
+importFrom(sf,st_as_sf)
+importFrom(sf,st_buffer)
+importFrom(sf,st_cast)
+importFrom(sf,st_difference)
+importFrom(terra,as.polygons)
+importFrom(terra,rast)
