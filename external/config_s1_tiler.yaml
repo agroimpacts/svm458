@@ -1,0 +1,60 @@
+# The bucket name in GCS for sentinel-2, no need to change
+# bucket: 'gcp-public-data-sentinel-2'
+# Start date for query, format is '%Y-%m-%d'
+# start: '2020-03-01'
+# # End date for query, format is '%Y-%m-%d'
+# end: '2021-03-01'
+# Adjust the start day based on downloaded image or not.
+# For example, all downloaded images start from 2020-03-02
+# then the start day will be adjusted to 2020-03-02.
+# start_adjust: False
+# Path setting, could be either full or relative path
+# The expected path to download images to
+# download_path: '/Volumes/elephant/ecaas/sentinel2_level2'
+# The path of the geojson of tiling system
+tiles_path:
+  "/home/rstudio/projects/geoms/ecaas_tiles.geojson"
+# The file path for the S1 footprints catalog
+catalog_path:
+    "/home/rstudio/projects/catalogs/s1_footprints_ecaas_2021_full.geojson"
+# target output directory
+dst_dir: '/data'
+# The expected path to save out the time series.
+time_series_path: 'sentinel1_time_series'
+# Path for log files
+log_dir: 'logs'
+# image source
+# The folder for level-2 processed images
+# Preprocess of S1, and atmospheric correction of S2 (fmask or maja)
+processed_path: s1l2
+
+
+tile:
+    # The width of the new clipped image in a tile, no need to change
+    width: 550
+    # The height of the new clipped image in a tile, no need to change
+    height: 550
+
+    # Guided filter parameters
+    # apply it or not
+    guided_filter: True
+    # kernel size
+    ksize: 3
+    # regularization parameter
+    eps: 3
+
+    # Output image parameter
+    # CRS for output
+    dst_crs: CRS.from_epsg(4326)
+    # Precision to maintain
+    prec: 1e06
+    # Output datatype
+    dst_dtype: rasterio.dtypes.int32
+    # number of threads to run on
+    num_threads: 1
+    # Driver
+    driver: 'GTiff'
+    # nodata value
+    nodata: -2147483648
+    # resampling method
+    resample: 'average'
